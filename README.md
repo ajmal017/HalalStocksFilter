@@ -27,7 +27,7 @@ The information retrieved by get_screen_data are:
 5)	Cash and Short-Term Investments (from WSJ; with Zacks as backup)
 6)	Total Accounts Receivable (from WSJ; with Zacks as backup)
 7)	Latest Fiscal Year of data for items 7 and 8 below (from WSJ; with Zacks as backup)
-8)	Non-Operating Interest Income (from WSJ; no backup site available yet)
+8)	Non-Operating Interest Income (from WSJ; with Reuters as backup)
 9)	Total Debt (from WSJ; with Zacks as backup))
 
 
