@@ -63,7 +63,7 @@ After removing companies with unacceptable primary business activities, the rema
 > - The sum of a company’s cash and interest-bearing securities divided by trailing 24-month average market capitalization 
 > - Accounts receivables divided by trailing 24-month average market capitalization 
  
-> *(Note that the apply_screen simply excludes ALL financial companies and real estate companies.)*
+*(Note that the apply_screen simply excludes ALL financial companies and real estate companies.)*
  
 
 ## 3. How it is used:
