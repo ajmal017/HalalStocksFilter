@@ -68,7 +68,7 @@ After removing companies with unacceptable primary business activities, the rema
 
 ## 3. How it is used:
 
-### get_screen_data(self, stocks, unique="No",  compression=None, verbose=0)
+### get_screen_data(self, stocks, unique="No",  compression=None, verbose=0, User_Agent='')
 
 This function only requires the stocks whose data we want to retrieve and returns a pandas dataframe and a file path to the location of that dataframe saved as a CSV. The returned dataframe will contain empty extra columns which are useful in case the same dataframe is used as input in the apply_screen
 
@@ -80,6 +80,7 @@ This function only requires the stocks whose data we want to retrieve and return
 
 ***verbose***: Controls the amount of screen messages, and effectively ranges from 0 to 2 (anything greater than 2 is the same as 2).
 
+***User_Agent***: Use this variable if user has a specific value for a website Request header, otherwise leave blank and a default value will be used when scraping.
 
 -------------
 
@@ -123,3 +124,21 @@ or as such:
 
 ***compression***: Compression type in case the output file is to be compressed when written as a CSV.
 
+
+## 4. Example Usage with MagicFormula
+
+A simple way of using the HalalStocksFilter alongside the MagicFormula function can be seen below:
+
+>from MagicFormula import MagicFormula
+>
+>from HalalStocksFilter import HalalStocksFilter
+>
+>mf = MagicFormula.MagicFormula()
+>
+>hsf = HalalStocksFilter.HalalStocksFilter()
+>
+>stocks, filename = mf.get_stocks(email='example@example.com',password='example123',stocksNum=50)
+>
+>screen_df, filename2 = hsf.get_screen_data(stocks)
+>
+>final_df, filename3 = hsf.apply_screen(screen_df,length=2) # Using length=2 provides us with all the columns
