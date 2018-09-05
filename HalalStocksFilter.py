@@ -212,7 +212,6 @@ import json
 import re
 
 
-
 class HalalStocksFilter:
 
     def __init__(self):
@@ -221,7 +220,7 @@ class HalalStocksFilter:
 
 
 
-    def get_screen_data( self, stocks, unique="No",  compression=None, verbose=0):
+    def get_screen_data(self, stocks, unique="No", compression=None, verbose=0, User_Agent=''):
 
         # Create a dataframe with necessary columns
         df = pd.DataFrame(columns=list(['Ticker',                                                      # 0
@@ -340,12 +339,14 @@ class HalalStocksFilter:
                             ' column. Please re-check in put.')
 
         numrows = df.shape[0]
-
         # Make some folders if nonexistent
         # if not os.path.exists('.\json'):
         #     os.makedirs('.\json')
         # temp_path = '.\json'
         count = 0
+        if User_Agent == '':
+            User_Agent = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:61.0) Gecko/20100101 Firefox/61.0'
+
         for count in range(numrows):
             if verbose >=0:
                 print(str(df.iloc[count, 0]) + ": started.")
@@ -357,11 +358,13 @@ class HalalStocksFilter:
                 print("Acquiring Market Cap for stock number " + str(count+1) + ": "
                     + str(df.iloc[count, 0]) + " from Zacks.")
             tries=0
+
             while tries<5:
                 try:
                     url = "https://widget3.zacks.com/data/chart/json/" + str(
                         df.iloc[count, 0]) + "/market_cap/www.zacks.com"
-                    r = request.urlopen(url)
+                    req = request.Request(url, data=None, headers={'User-Agent':User_Agent})
+                    r = request.urlopen(req)
                     market_cap = json.load(r)
                     monthly_market_cap = market_cap["monthly_market_cap"]
                     timestamps = list(monthly_market_cap.keys())
@@ -382,8 +385,8 @@ class HalalStocksFilter:
                     mrktcp24avg = mrktcp24 / j
                     df.iloc[count, 3] = mrktcp24avg
                     break
-                except ValueError:
-                    tries=+1
+                except:
+                    tries+=1
                     if tries==5:
                         if verbose >= 2:
                             print("Failed to get Market Cap for stock number " + str(count) + ": "
@@ -411,10 +414,11 @@ class HalalStocksFilter:
             url = ("http://quotes.wsj.com/" + str(df.iloc[count, 0]) + "/company-people")
             tries=0
             while tries<5:
-                tries=+1
+                tries+=1
                 ## Get company 'Description'
                 try:
-                    r = request.urlopen(url)
+                    req = request.Request(url, data=None, headers={'User-Agent': User_Agent})
+                    r = request.urlopen(req)
                     soup = BeautifulSoup(r, "html.parser")
                     # Get Description
                     results = soup.find("div", {"class": "cr_description_full cr_expand"}).find("p",{"class": "txtBody"})
@@ -426,7 +430,8 @@ class HalalStocksFilter:
                 url = ("https://www.zacks.com/stock/quote/" + str(df.iloc[count, 0]))
                 if df.iloc[count, 2] == "N/A":
                     try:
-                        r = request.urlopen(url)
+                        req = request.Request(url, data=None, headers={'User-Agent': User_Agent})
+                        r = request.urlopen(req)
                         soup = BeautifulSoup(r, "html.parser")
                         # Get Description
                         results = soup.find("section", {"id": "stock_comp_desc"}).find("p")
@@ -437,7 +442,8 @@ class HalalStocksFilter:
                 ## Get the 'Company Name'
                 if compname_tag==0:
                     try:
-                        r = request.urlopen(url)
+                        req = request.Request(url, data=None, headers={'User-Agent': User_Agent})
+                        r = request.urlopen(req)
                         soup = BeautifulSoup(r, "html.parser")
                         # Get Name
                         results = soup.find("div", {"class": "quote_summary"}).find("h1")
@@ -460,7 +466,8 @@ class HalalStocksFilter:
             while tries < 5:
                 tries+=1
                 try:
-                    r = request.urlopen(url)
+                    req = request.Request(url, data=None, headers={'User-Agent': User_Agent})
+                    r = request.urlopen(req)
                     soup = BeautifulSoup(r, "html.parser")
                     break
                 except:
@@ -519,7 +526,8 @@ class HalalStocksFilter:
                 while tries<5:
                     try:
                         url = "https://www.zacks.com/stock/quote/" + str(df.iloc[count, 0]) + "/balance-sheet"
-                        r = request.urlopen(url)
+                        req = request.Request(url, data=None, headers={'User-Agent': User_Agent})
+                        r = request.urlopen(req)
                         soup = BeautifulSoup(r, "html.parser")
                         results = soup.find("div", {"id": "annual_income_statement"}).find("table").find("thead").find("tr").find_all("th")[1].text
                         FiscalDataYear3 = results.split('/')[2]
@@ -572,9 +580,9 @@ class HalalStocksFilter:
             tries=0
             while tries<5:
                 try:
-                    r = request.urlopen(url)
+                    req = request.Request(url, data=None, headers={'User-Agent': User_Agent})
+                    r = request.urlopen(req)
                     soup = BeautifulSoup(r, "html.parser")
-
                     # Get latest Fiscal Year on website
                     try:
                         results = soup.find("table", {"class": "cr_dataTable"}).find("thead").find("tr").find_all("th")
@@ -646,8 +654,8 @@ class HalalStocksFilter:
                 while tries < 5:
                     try:
                         url = "https://www.zacks.com/stock/quote/" + str(df.iloc[count, 0]) + "/balance-sheet"
-                        # r = s.get(url)
-                        r = request.urlopen(url)
+                        req = request.Request(url, data=None, headers={'User-Agent': User_Agent})
+                        r = request.urlopen(req)
                         soup = BeautifulSoup(r, "html.parser")
                         results = soup.find("div", {"id": "annual_income_statement"}).find("table").find("thead").find(
                             "tr").find_all("th")[1].text
@@ -694,7 +702,8 @@ class HalalStocksFilter:
                     try:
                         url = "https://www.zacks.com/stock/quote/" + str(df.iloc[count, 0]) + "/balance-sheet"
                         try:
-                            r = request.urlopen(url)
+                            req = request.Request(url, data=None, headers={'User-Agent': User_Agent})
+                            r = request.urlopen(req)
                             soup = BeautifulSoup(r, "html.parser")
                             results = soup.find("div", {"id": "annual_income_statement"}).find("table").find("thead").find(
                                 "tr").find_all("th")[1]
@@ -729,7 +738,7 @@ class HalalStocksFilter:
                             df.iloc[count, 8] = float(acntRec) * value
                         except:
                             df.iloc[count, 8] = 'N/A'
-                        break
+                        tries=5
                     except:
                         tries += 1
                         df.iloc[count, 8] = 'N/A'
@@ -751,7 +760,8 @@ class HalalStocksFilter:
             while tries < 5:
                 tries+=1
                 try:
-                    r = request.urlopen(url)
+                    req = request.Request(url, data=None, headers={'User-Agent': User_Agent})
+                    r = request.urlopen(req)
                     soup = BeautifulSoup(r, "html.parser")
                     break
                 except:
@@ -822,7 +832,8 @@ class HalalStocksFilter:
                     for ext in [".O", ".N", ".OQ", ".P", ".PK", ".PH", ".MU"]:
                         try:
                             url = 'https://www.reuters.com/finance/stocks/income-statement/' + str(df.iloc[count, 0]) + ext + '?stmtType=INC&perType=ANN'
-                            r = request.urlopen(url)
+                            req = request.Request(url, data=None, headers={'User-Agent': User_Agent})
+                            r = request.urlopen(req)
                             soup = BeautifulSoup(r, "html.parser")
                             results = soup.find("span", {"class": "units"})
                             if 'millions' in results.text.lower():
@@ -861,9 +872,7 @@ class HalalStocksFilter:
             df.iloc[count, 14] = FiscalDataYear1
             df.iloc[count, 15] = FiscalDataYear1
 
-            print("Dataframe: " + str(df.iloc[count, 0]) + " data retrieval 100% complete.")
-
-
+            print("Dataframe: Stock #" + str(count) + " (" + str(df.iloc[count, 0]) + ") data retrieval 100% complete.")
 
 
         ##########################################
@@ -880,7 +889,7 @@ class HalalStocksFilter:
         return df, filename
 
 
-    def apply_screen(self, df_or_filename, mask=None, comp_desc=None, output=0, length=0,unique="No", compression=None):
+    def apply_screen(self, df_or_filename, mask=None, comp_desc=None, output=0, length=0, unique="No", compression=None):
         # Check that 'df_or_filename' is a filepath and try to read
         if isinstance(df_or_filename, str): #|isinstance(df_or_filename, basestring)
             try:
@@ -930,7 +939,6 @@ class HalalStocksFilter:
                                                                         except:
                                                                             raise("Error encountered with reading the parameter \
                                                                                   'df_or_filename' as a filepath into a pandas dataframe.")
-
         # Check that 'df_or_filename' is a dataframe and try to read
         elif isinstance(df_or_filename,pd.DataFrame):
             try:
@@ -945,7 +953,7 @@ class HalalStocksFilter:
                 raise ("Function parameter 'df_or_filename' is incorrect type. It must be a filepath or a pandas \
                        dataframe or object readable as a pandas dataframe")
 
-
+        tag = 0
         # Check if 'mask' parameter is empty or correct type and use it accordingly, depending on the dataframe loaded.
 
         # If list of numbers, length of list should be 5 or 6, to represent the indices of the loaded dataframe's columns
@@ -967,6 +975,7 @@ class HalalStocksFilter:
                 df_TD = df.iloc[:, mask[2]]
                 df_Cash_Sec = df.iloc[:, mask[3]]
                 df_AR = df.iloc[:, mask[4]]
+                tag = 1
             if 6 == count:
                 df_CompDes = df.iloc[:, mask[0]]
                 df_MkCap = df.iloc[:, mask[1]]
@@ -975,6 +984,7 @@ class HalalStocksFilter:
                 df_Sec = df.iloc[:, mask[4]]
                 df_Cash_Sec = df_Cash + df_Sec
                 df_AR = df.iloc[:, mask[5]]
+                tag = 0
 
         # If 'mask' is a dict, make sure keys are written as such, with values representing the indices of the loaded
         # dataframe's columns of interest for the screening calculations:
@@ -990,6 +1000,7 @@ class HalalStocksFilter:
                     df_TD = df.iloc[:, mask['TD']]
                     df_Cash_Sec = df.iloc[:, mask['Cash_Sec']]
                     df_AR = df.iloc[:, mask['AR']]
+                    tag = 1
                 except:
                     raise Exception("'mask' parameters is a dict with 5 keys but at least one key is incorrect.")
             elif count==6:
@@ -1001,6 +1012,7 @@ class HalalStocksFilter:
                     df_Sec = df.iloc[:, mask['Sec']]
                     df_Cash_Sec = df_Cash + df_Sec
                     df_AR = df.iloc[:, mask['AR']]
+                    tag = 0
                 except:
                     raise Exception("'mask' parameters is a dict with 6 keys but at least one key is incorrect.")
             else:
@@ -1042,6 +1054,7 @@ class HalalStocksFilter:
                     df_Cash = df.loc[:, 'Cash & Short Term Investments (Cash)']
                     df_Sec = df.loc[:, 'Non-Operating Interest Income (Sec)']
                     df_Cash_Sec = df_Cash + df_Sec
+                    tag = 0
                     df_AR = df.loc[:, 'Accounts Receivables (AR)']
                 elif count==7:
                     df_CompDes = df.loc[:,'Company Description']
@@ -1049,6 +1062,7 @@ class HalalStocksFilter:
                     df_TD = df.loc[:,'Total Debt (TD)']
                     df_Cash_Sec = df.loc[:,'Sum of Cash & Interest-Bearing Securities (Cash+Sec)']
                     df_AR = df.loc[:,'Accounts Receivables (AR)']
+                    tag = 1
                 elif count>7:
                     df_CompDes = df.loc[:, 'Company Description']
                     df_MkCap = df.loc[:, 'Trailing 24-Month Average Market Capitalization (MkCap)']
@@ -1063,11 +1077,16 @@ class HalalStocksFilter:
                         pass
                     try:
                         df_Cash_Sec = df.loc[:, 'Sum of Cash & Interest-Bearing Securities (Cash+Sec)']
+                        tag = 1
                     except:
                         try:
                             df_Cash_Sec = df_Cash + df_Sec
+                            tag = 0
                         except:
                             pass
+                    if len(df_Cash_Sec.isnull()==True)==df.shape[0]:
+                        df_Cash_Sec = df_Cash + df_Sec
+                        tag = 0
                     df_AR = df.loc[:, 'Accounts Receivables (AR)']
             except:
                 raise Exception("Function has encountered an unknown problem, please check your file or dataframe for "
@@ -1082,10 +1101,11 @@ class HalalStocksFilter:
         for i in idx:
             #  'Sum of Cash & Interest-Bearing Securities (Cash+Sec)'
             # if (count == 6) | (len(df_Cash_Sec.isna()) == rows) | (len(df_Cash_Sec.isnull()) == rows):
-            try:
-                df.loc[i, 'Sum of Cash & Interest-Bearing Securities (Cash+Sec)'] = float(df_Cash_Sec.iloc[i])
-            except:
-                df.loc[i, 'Sum of Cash & Interest-Bearing Securities (Cash+Sec)'] = 'N/A'
+            if tag==0:
+                try:
+                    df.loc[i, 'Sum of Cash & Interest-Bearing Securities (Cash+Sec)'] = float(df_Cash_Sec.iloc[i])
+                except:
+                    df.loc[i, 'Sum of Cash & Interest-Bearing Securities (Cash+Sec)'] = 'N/A'
 
             #  'TD/MkCap Ratio'
             try:
@@ -1140,13 +1160,15 @@ class HalalStocksFilter:
 
             h = 0
             while h < len(words):
-                if words[h] in df_CompDes.iloc[i]:
+                try:
+                    if words[h] in df_CompDes.iloc[i]:
+                        df.loc[i, 'Description Screening'] = 'Fail'
+                        break
+                    else:
+                        df.loc[i, 'Description Screening'] = 'Pass'
+                    h += 1
+                except:
                     df.loc[i, 'Description Screening'] = 'Fail'
-                    break
-                else:
-                    df.loc[i, 'Description Screening'] = 'Pass'
-                h += 1
-
             #  'TD/MkCap < 33%'
             try:
                 if df.loc[i, 'TD/MkCap Ratio'] < 0.333:
