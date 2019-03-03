@@ -210,7 +210,10 @@ from bs4 import BeautifulSoup
 from urllib import request
 import json
 import re
-
+from tqdm import tqdm
+import os
+import argparse
+import sys
 
 class HalalStocksFilter:
 
@@ -219,8 +222,7 @@ class HalalStocksFilter:
                     " order to perform screening."
 
 
-
-    def get_screen_data(self, stocks, unique="No", compression=None, verbose=0, User_Agent=''):
+    def get_screen_data(self, stocks, unique=False, compression=None, verbose=0, user_agent=''):
 
         # Create a dataframe with necessary columns
         df = pd.DataFrame(columns=list(['Ticker',                                                      # 0
@@ -316,10 +318,10 @@ class HalalStocksFilter:
                                                                                         'actual pandas) dataframe with a'
                                                                                         ' stocks symbols column. Please '
                                                                                         're-check in put.')
-                
-                
-                
-                
+
+
+
+
             for i in ['Ticker', 'Symbol', 'Stock Symbol', 'Ticker Symbol', 'Stock Ticker']:
                 for j in stocks.columns:
                     if (i in j) == True:
@@ -335,8 +337,8 @@ class HalalStocksFilter:
                     df['Company Name'] = stocks[j]
                     break
         else:
-            raise Exception('Input is neither a list of stock symbols nor a (pandas) dataframe with a stocks symbols'
-                            ' column. Please re-check in put.')
+            raise Exception('Input is neither a list of stock symbols nor a (pandas) dataframe with stocks symbols'
+                            ' column. Please re-check input.')
 
         numrows = df.shape[0]
         # Make some folders if nonexistent
@@ -344,17 +346,17 @@ class HalalStocksFilter:
         #     os.makedirs('.\json')
         # temp_path = '.\json'
         count = 0
-        if User_Agent == '':
-            User_Agent = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:61.0) Gecko/20100101 Firefox/61.0'
+        if user_agent == '':
+            user_agent = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:61.0) Gecko/20100101 Firefox/61.0'
 
-        for count in range(numrows):
-            if verbose >=0:
+        for count in tqdm(range(numrows)):
+            if verbose >=1:
                 print(str(df.iloc[count, 0]) + ": started.")
             ###########################################
             ####     Market Cap (Zacks website)    ####
             ###########################################
 
-            if verbose >= 1:
+            if verbose >= 2:
                 print("Acquiring Market Cap for stock number " + str(count+1) + ": "
                     + str(df.iloc[count, 0]) + " from Zacks.")
             tries=0
@@ -363,7 +365,7 @@ class HalalStocksFilter:
                 try:
                     url = "https://widget3.zacks.com/data/chart/json/" + str(
                         df.iloc[count, 0]) + "/market_cap/www.zacks.com"
-                    req = request.Request(url, data=None, headers={'User-Agent':User_Agent})
+                    req = request.Request(url, data=None, headers={'User-Agent':user_agent})
                     r = request.urlopen(req)
                     market_cap = json.load(r)
                     monthly_market_cap = market_cap["monthly_market_cap"]
@@ -388,14 +390,14 @@ class HalalStocksFilter:
                 except:
                     tries+=1
                     if tries==5:
-                        if verbose >= 2:
+                        if verbose >= 3:
                             print("Failed to get Market Cap for stock number " + str(count) + ": "
                                   + str(df.iloc[count, 1]))
                             print("Setting Market Cap for stock number " + str(count)
                                   + " to 0.0000001")
                         df.iloc[count, 3] = 0.0000001
 
-            if verbose >= 1:
+            if verbose >= 2:
                 print("Dataframe: " + str(df.iloc[count, 0]) + " data retrieval 33% complete.")
 
             ###########################################################################################################
@@ -403,10 +405,10 @@ class HalalStocksFilter:
             ####      Non-Operating Interest Income, Accounts Receivable, Total Debt (WSJ and back-up websites)    ####
             ###########################################################################################################
 
-            if verbose >= 2:
+            if verbose >= 3:
                 print("Acquiring the Company Name and Description for stock number " + str(count+1) + ": "
                     + str(df.iloc[count, 0]) + " from the WSJ.")
-            elif verbose >= 1:
+            elif verbose >= 2:
                 print("Acquiring the Company Name and Description for stock number " + str(count + 1) + ": "
                       + str(df.iloc[count, 0]))
 
@@ -417,7 +419,7 @@ class HalalStocksFilter:
                 tries+=1
                 ## Get company 'Description'
                 try:
-                    req = request.Request(url, data=None, headers={'User-Agent': User_Agent})
+                    req = request.Request(url, data=None, headers={'User-Agent': user_agent})
                     r = request.urlopen(req)
                     soup = BeautifulSoup(r, "html.parser")
                     # Get Description
@@ -430,7 +432,7 @@ class HalalStocksFilter:
                 url = ("https://www.zacks.com/stock/quote/" + str(df.iloc[count, 0]))
                 if df.iloc[count, 2] == "N/A":
                     try:
-                        req = request.Request(url, data=None, headers={'User-Agent': User_Agent})
+                        req = request.Request(url, data=None, headers={'User-Agent': user_agent})
                         r = request.urlopen(req)
                         soup = BeautifulSoup(r, "html.parser")
                         # Get Description
@@ -442,7 +444,7 @@ class HalalStocksFilter:
                 ## Get the 'Company Name'
                 if compname_tag==0:
                     try:
-                        req = request.Request(url, data=None, headers={'User-Agent': User_Agent})
+                        req = request.Request(url, data=None, headers={'User-Agent': user_agent})
                         r = request.urlopen(req)
                         soup = BeautifulSoup(r, "html.parser")
                         # Get Name
@@ -453,10 +455,10 @@ class HalalStocksFilter:
                 break
 
 
-            if verbose >= 2:
+            if verbose >= 3:
                 print("Acquiring the Total Debt for stock number " + str(count+1) + ": "
                     + str(df.iloc[count, 0]) + " from the WSJ.")
-            elif verbose >= 1:
+            elif verbose >= 2:
                 print("Acquiring the Total Debt for stock number " + str(count + 1) + ": "
                         + str(df.iloc[count, 0]))
 
@@ -466,12 +468,12 @@ class HalalStocksFilter:
             while tries < 5:
                 tries+=1
                 try:
-                    req = request.Request(url, data=None, headers={'User-Agent': User_Agent})
+                    req = request.Request(url, data=None, headers={'User-Agent': user_agent})
                     r = request.urlopen(req)
                     soup = BeautifulSoup(r, "html.parser")
                     break
                 except:
-                    if verbose >= 2:
+                    if verbose >= 3:
                         print("Attempt " + str(tries + 1) + " at retrieving the 'Total Debt' from WSJ")
 
             try:
@@ -519,14 +521,14 @@ class HalalStocksFilter:
 
             # If Total Debt not found on WSJ, try Zacks
             if df.iloc[count, 4] == 'N/A':
-                if verbose >= 2:
+                if verbose >= 3:
                     print("Total Debt not found on WSJ. Attempting to retrieve sum of ['Current Portion Long-Term Debt' "
                           "+ 'Long-Term Debt' + 'Convertible Debt'] from Zacks.")
                 tries=0
                 while tries<5:
                     try:
                         url = "https://www.zacks.com/stock/quote/" + str(df.iloc[count, 0]) + "/balance-sheet"
-                        req = request.Request(url, data=None, headers={'User-Agent': User_Agent})
+                        req = request.Request(url, data=None, headers={'User-Agent': user_agent})
                         r = request.urlopen(req)
                         soup = BeautifulSoup(r, "html.parser")
                         results = soup.find("div", {"id": "annual_income_statement"}).find("table").find("thead").find("tr").find_all("th")[1].text
@@ -569,10 +571,10 @@ class HalalStocksFilter:
 
 
             ### Get the latest Fiscal Year, 'Cash and Short Term Investments', and 'Total Accounts Receivable'
-            if verbose >= 2:
+            if verbose >= 3:
                 print("Acquiring the Cash and Short Term Investments, and Total Accounts Receivable, for latest Fiscal"
                       " Year available, for stock number " + str(count + 1) + ": " + str(df.iloc[count, 0]) + " from the WSJ.")
-            elif verbose >= 1:
+            elif verbose >= 2:
                 print("Acquiring the Cash and Short Term Investments, and Total Accounts Receivable, for latest Fiscal"
                       " Year available, for stock number " + str(count + 1) + ": " + str(
                     df.iloc[count, 0]))
@@ -580,7 +582,7 @@ class HalalStocksFilter:
             tries=0
             while tries<5:
                 try:
-                    req = request.Request(url, data=None, headers={'User-Agent': User_Agent})
+                    req = request.Request(url, data=None, headers={'User-Agent': user_agent})
                     r = request.urlopen(req)
                     soup = BeautifulSoup(r, "html.parser")
                     # Get latest Fiscal Year on website
@@ -649,12 +651,12 @@ class HalalStocksFilter:
             # If Total Cash and Short Term Investments not found on WSJ, try Zacks
             tries = 0
             if df.iloc[count, 5] == 'N/A':
-                if verbose >= 2:
+                if verbose >= 3:
                     print("Total Cash and Short Term Investments not found on WSJ. Attempting to retrieve 'Cash & Equivalents' from Zacks.")
                 while tries < 5:
                     try:
                         url = "https://www.zacks.com/stock/quote/" + str(df.iloc[count, 0]) + "/balance-sheet"
-                        req = request.Request(url, data=None, headers={'User-Agent': User_Agent})
+                        req = request.Request(url, data=None, headers={'User-Agent': user_agent})
                         r = request.urlopen(req)
                         soup = BeautifulSoup(r, "html.parser")
                         results = soup.find("div", {"id": "annual_income_statement"}).find("table").find("thead").find(
@@ -696,13 +698,13 @@ class HalalStocksFilter:
             # If Total Accounts Receivable not found on WSJ, try Zacks
             tries=0
             if df.iloc[count, 8] == 'N/A':
-                if verbose >= 2:
+                if verbose >= 3:
                     print("Total Accounts Receivable not found on WSJ. Attempting to retrieve 'Receivables' from Zacks.")
                 while tries<5:
                     try:
                         url = "https://www.zacks.com/stock/quote/" + str(df.iloc[count, 0]) + "/balance-sheet"
                         try:
-                            req = request.Request(url, data=None, headers={'User-Agent': User_Agent})
+                            req = request.Request(url, data=None, headers={'User-Agent': user_agent})
                             r = request.urlopen(req)
                             soup = BeautifulSoup(r, "html.parser")
                             results = soup.find("div", {"id": "annual_income_statement"}).find("table").find("thead").find(
@@ -743,15 +745,15 @@ class HalalStocksFilter:
                         tries += 1
                         df.iloc[count, 8] = 'N/A'
 
-            if verbose >= 1:
+            if verbose >= 2:
                 print("Dataframe: " + str(df.iloc[count, 0]) + " data retrieval 66% complete.")
 
 
             ### Get the 'Non-Operating Interest Income'
-            if verbose >= 2:
+            if verbose >= 3:
                 print("Acquiring the Non-Operating Interest Income for stock number " + str(count + 1) + ": " +
                       str(df.iloc[count, 0]) + " from the WSJ.")
-            elif verbose >= 1:
+            elif verbose >= 2:
                 print("Acquiring the Non-Operating Interest Income for stock number " + str(count + 1) + ": " +
                       str(df.iloc[count, 0]))
 
@@ -760,8 +762,8 @@ class HalalStocksFilter:
             while tries < 5:
                 tries+=1
                 try:
-                    req = request.Request(url, data=None, headers={'User-Agent': User_Agent})
-                    r = request.urlopen(req)
+                    req = request.Request(url, data=None, headers={'User-Agent': user_agent})
+                    r = request.urlopen(req, timeout=60)
                     soup = BeautifulSoup(r, "html.parser")
                     break
                 except:
@@ -824,7 +826,7 @@ class HalalStocksFilter:
 
             # If Non-Operating Interest Income not found on WSJ, try Reuters
             if df.iloc[count, 6] == 'N/A':
-                if verbose >= 2:
+                if verbose >= 3:
                     print("Non-Operating Interest Income not found on WSJ. Attempting to retrieve 'Interest/Invest Income - Non-Operating' from Reuters.")
                 tries = 0
                 while tries < 5:
@@ -832,7 +834,7 @@ class HalalStocksFilter:
                     for ext in [".O", ".N", ".OQ", ".P", ".PK", ".PH", ".MU"]:
                         try:
                             url = 'https://www.reuters.com/finance/stocks/income-statement/' + str(df.iloc[count, 0]) + ext + '?stmtType=INC&perType=ANN'
-                            req = request.Request(url, data=None, headers={'User-Agent': User_Agent})
+                            req = request.Request(url, data=None, headers={'User-Agent': user_agent})
                             r = request.urlopen(req)
                             soup = BeautifulSoup(r, "html.parser")
                             results = soup.find("span", {"class": "units"})
@@ -872,24 +874,29 @@ class HalalStocksFilter:
             df.iloc[count, 14] = FiscalDataYear1
             df.iloc[count, 15] = FiscalDataYear1
 
-            print("Dataframe: Stock #" + str(count) + " (" + str(df.iloc[count, 0]) + ") data retrieval 100% complete.")
+            if verbose >= 1:
+                print("Dataframe: Stock #" + str(count) + " (" + str(df.iloc[count, 0]) + ") data retrieval 100% complete.")
 
 
         ##########################################
         ### Saving the dataframe to a csv file ###
         ##########################################
         now = datetime.datetime.now()
-        if (unique.lower()=="no") | (unique.lower()=="false") | (unique==False):
+        if unique==False:
+            dateversion = now.strftime("%Y-%m-%d")
+        elif (unique.lower()=="no") | (unique.lower()=="false"):
             dateversion = now.strftime("%Y-%m-%d")
         else:
             dateversion = now.strftime("%Y-%m-%d-%H.%M.%S")
-        filename = '.\Full_ScreeningData_' + str(dateversion) + '.csv'
-        df.to_csv(path_or_buf=filename, mode='w+',compression=compression)
+        if not os.path.exists(str(dateversion)):
+            os.mkdir(str(dateversion))
+        filename = str(dateversion)+'\Full_ScreeningData_' + str(dateversion) + '.csv'
+        df.to_csv(path_or_buf=filename, mode='w+', compression=compression)
         print("All data retrieval 100% complete.")
         return df, filename
 
 
-    def apply_screen(self, df_or_filename, mask=None, comp_desc=None, output=0, length=0, unique="No", compression=None):
+    def apply_screen(self, df_or_filename, haram_keywords=None, output=0, length=0, unique=False, compression=None, mask=None):
         # Check that 'df_or_filename' is a filepath and try to read
         if isinstance(df_or_filename, str): #|isinstance(df_or_filename, basestring)
             try:
@@ -940,7 +947,7 @@ class HalalStocksFilter:
                                                                             raise("Error encountered with reading the parameter \
                                                                                   'df_or_filename' as a filepath into a pandas dataframe.")
         # Check that 'df_or_filename' is a dataframe and try to read
-        elif isinstance(df_or_filename,pd.DataFrame):
+        elif isinstance(df_or_filename, pd.DataFrame):
             try:
                 df = df_or_filename
             except:
@@ -1098,7 +1105,7 @@ class HalalStocksFilter:
             idx = df.index
         else: # Assume that the row indices are numbers
             idx = range(rows)
-        for i in idx:
+        for i in tqdm(idx):
             #  'Sum of Cash & Interest-Bearing Securities (Cash+Sec)'
             # if (count == 6) | (len(df_Cash_Sec.isna()) == rows) | (len(df_Cash_Sec.isnull()) == rows):
             if tag==0:
@@ -1126,7 +1133,7 @@ class HalalStocksFilter:
                 df.loc[i, 'AR/MkCap Ratio'] = 'N/A'
 
             #  'Description Screening'
-            if comp_desc==None:
+            if haram_keywords==None:
                 words = ['tobacco',
                      'banking',
                      'insurance',
@@ -1156,7 +1163,7 @@ class HalalStocksFilter:
                      'video-game',
                      'computer game']
             else:
-                words = comp_desc
+                words = haram_keywords
 
             h = 0
             while h < len(words):
@@ -1233,49 +1240,144 @@ class HalalStocksFilter:
             else:
                 df.loc[i, 'Final Result'] = 'Fail'
 
-            percent_complete = (i / rows) * 100
-            print(str(round(percent_complete, 2)) + "% data processing complete.")
+            # percent_complete = (i / rows) * 100
+            # print(str(round(percent_complete, 2)) + "% data processing complete.")
 
         now = datetime.datetime.now()
-        if unique == "No":
+        if unique == False:
+            dateversion = now.strftime("%Y-%m-%d")
+        elif (unique.lower() == "no") | (unique.lower() == "false"):
             dateversion = now.strftime("%Y-%m-%d")
         else:
             dateversion = now.strftime("%Y-%m-%d-%H.%M.%S")
+        if not os.path.exists(str(dateversion)):
+            os.mkdir(str(dateversion))
 
         if output == 0:
             df = df[df['Final Result'] == 'Pass']
-            filename = '.\PassOnly_FullFeatures_OutputTable_ScreenedStocks_' + str(dateversion) + '.csv'
+            filename = str(dateversion)+'\PassOnly_FullFeatures_OutputTable_ScreenedStocks_' + str(dateversion) + '.csv'
             if length == 0:
                 df = df.loc[:, ['Ticker','Final Result']]
-                filename = '.\PassOnly_MinimumFeatures_OutputTable_ScreenedStocks_' + str(dateversion) + '.csv'
+                filename = str(dateversion)+'\PassOnly_MinimumFeatures_OutputTable_ScreenedStocks_' + str(dateversion) + '.csv'
             elif length == 1:
                 df = df.loc[:, ['Ticker','Description Screening','TD/MkCap < 33%','CashSec/MkCap < 33%',
                                 'AR/MkCap Ratio < 33%','Fiscal Data Year (TD)','Fiscal Data Year (Sec)',
                                 'Fiscal Data Year (Cash)','Fiscal Data Year (AR)','Final Result']]
-                filename = '.\PassOnly_MediumFeatures_OutputTable_ScreenedStocks_' + str(dateversion) + '.csv'
+                filename = str(dateversion)+'\PassOnly_MediumFeatures_OutputTable_ScreenedStocks_' + str(dateversion) + '.csv'
 
         if output == 1:
             df = df[df['Final Result'] == 'Fail']
-            filename = '.\FailOnly_FullFeatures_OutputTable_ScreenedStocks_' + str(dateversion) + '.csv'
+            filename = str(dateversion)+'\FailOnly_FullFeatures_OutputTable_ScreenedStocks_' + str(dateversion) + '.csv'
             if length == 0:
                 df = df.loc[:, ['Ticker', 'Final Result']]
-                filename = '.\FailOnly_MinimumFeatures_OutputTable_ScreenedStocks_' + str(dateversion) + '.csv'
+                filename = str(dateversion)+'\FailOnly_MinimumFeatures_OutputTable_ScreenedStocks_' + str(dateversion) + '.csv'
             elif length == 1:
                 df = df.loc[:, ['Ticker', 'Description Screening', 'TD/MkCap < 33%', 'CashSec/MkCap < 33%',
                                 'AR/MkCap Ratio < 33%', 'Fiscal Data Year (TD)', 'Fiscal Data Year (Sec)',
                                 'Fiscal Data Year (Cash)', 'Fiscal Data Year (AR)', 'Final Result']]
-                filename = '.\FailOnly_MediumFeatures_OutputTable_ScreenedStocks_' + str(dateversion) + '.csv'
+                filename = str(dateversion)+'\FailOnly_MediumFeatures_OutputTable_ScreenedStocks_' + str(dateversion) + '.csv'
 
         if (output!=0) & (output!=1):
-            filename = '.\AllResults_FullFeatures_OutputTable_ScreenedStocks_' + str(dateversion) + '.csv'
+            filename = str(dateversion)+'\AllResults_FullFeatures_OutputTable_ScreenedStocks_' + str(dateversion) + '.csv'
             if length == 0:
                 df = df.loc[:, ['Ticker','Final Result']]
-                filename = '.\AllResults_MinimumFeatures_OutputTable_ScreenedStocks_' + str(dateversion) + '.csv'
+                filename = str(dateversion)+'\AllResults_MinimumFeatures_OutputTable_ScreenedStocks_' + str(dateversion) + '.csv'
             elif length == 1:
                 df = df.loc[:, ['Ticker','Description Screening','TD/MkCap < 33%','CashSec/MkCap < 33%',
                                 'AR/MkCap Ratio < 33%','Fiscal Data Year (TD)','Fiscal Data Year (Sec)',
                                 'Fiscal Data Year (Cash)','Fiscal Data Year (AR)','Final Result']]
-                filename = '.\AllResults_MediumFeatures_OutputTable_ScreenedStocks_' + str(dateversion) + '.csv'
+                filename = str(dateversion)+'\AllResults_MediumFeatures_OutputTable_ScreenedStocks_' + str(dateversion) + '.csv'
 
-        df.to_csv(path_or_buf=filename, mode='w+',compression=compression)
+        df.to_csv(path_or_buf=filename, mode='w+', compression=compression)
         return df, filename
+
+
+
+def main():
+    parser = argparse.ArgumentParser(description="Produce Input Table to Halal Filter and Apply",conflict_handler='resolve')
+    parser.add_argument("-uq", "--unique", action="store_false", default=False, help="'True' to add timestamp to filename; default is 'False'.")
+    parser.add_argument("-cm", "--compression", default=None, help="Compression type when saving to CSV.")
+    parser.add_argument("-v", "--verbose", action="count", default=0, help="Specify level of output verbosity [0,1,2].")
+    parser.add_argument("-ua", "--user_agent", default='', help="Specify 'User Agent' value for http requests.")
+    parser.add_argument("stocks", type=str, help="Stocks dataframe file or filepath")
+    parser.add_argument("-cd", "--haram_keywords", default=None, help="List of keywords that act as 'haram' flags "
+                                    "within company descriptions. If not 'None' then it overrides the internal list.")
+    parser.add_argument("-o", "--output", default=0, action="count", help="If output is 0, 1, or neither, then output "
+                                                                          "includes only Pass, Fail, or All stocks.")
+    parser.add_argument("-ln", "--length", default=0, action="count", help="If length is 0, 1, or >1, then number of "
+                                                                    "columns are minimum, medium, or full respectively")
+    parser.add_argument("-ms", "--mask", default=None, const=None, nargs="*", help="A list or dict which represents"
+                                    " which columns of the input dataframe are the requisite columns for screening.")
+
+    parser.add_argument("-gs", "--Get_Screen", default=True, help="This flag is to use or skip over the get_screen_data function.")
+    parser.add_argument("-as", "--Apply_Screen", default=True, help="This flag is to use or skip over the apply_screen function.")
+    args, unknown = parser.parse_known_args()
+
+    HSF = HalalStocksFilter()
+    if args.Get_Screen==True:
+        print('Running get_screen_data function')
+        screen_df, fn = HSF.get_screen_data(args.stocks, args.unique, args.compression, args.verbose, args.user_agent)
+    else:
+        print('Skipping get_screen_data function. Converting input filepath to pandas dataframe for apply_screen function.')
+        if isinstance(args.stocks, str):
+            try:
+                screen_df = pd.read_csv(args.stocks)
+            except:
+                try:
+                    screen_df = pd.read_csv(args.stocks, sep=',', header=0, index_col=0, encoding='windows-1252')
+                except:
+                    try:
+                        screen_df = pd.read_csv(args.stocks, sep=',', header=0, index_col=0, encoding='utf-16')
+                    except:
+                        try:
+                            screen_df = pd.read_csv(args.stocks, sep=',', header=0, index_col=0, encoding='ISO-8859-1')
+                        except:
+                            try:
+                                screen_df = pd.read_excel(args.stocks)
+                            except:
+                                try:
+                                    screen_df = pd.read_json(args.stocks)
+                                except:
+                                    try:
+                                        screen_df = pd.read_pickle(args.stocks)
+                                    except:
+                                        try:
+                                            screen_df = pd.read_sas(args.stocks)
+                                        except:
+                                            try:
+                                                screen_df = pd.read_sql(args.stocks)
+                                            except:
+                                                try:
+                                                    screen_df = pd.read_sql_query(args.stocks)
+                                                except:
+                                                    try:
+                                                        screen_df = pd.read_sql_table(args.stocks)
+                                                    except:
+                                                        try:
+                                                            screen_df = pd.read_stata(args.stocks)
+                                                        except:
+                                                            try:
+                                                                screen_df = pd.read_parquet(args.stocks)
+                                                            except:
+                                                                try:
+                                                                    screen_df = pd.read_table(args.stocks)
+                                                                except:
+                                                                    try:
+                                                                        screen_df = pd.read_html(args.stocks)
+                                                                    except:
+                                                                        raise Exception('Input is not a path to'
+                                                                                        'a file that can be converted '
+                                                                                        'into a dataframe with a stocks '
+                                                                                        'symbols column. Please '
+                                                                                        're-check in put.')
+
+    if args.Apply_Screen==True:
+        print('Running apply_screen function')
+        df, filename = HSF.apply_screen(screen_df, args.haram_keywords, args.output, args.length, args.unique, args.compression, args.mask)
+    else:
+        print('Skipping apply_screen function.')
+
+
+if __name__ == '__main__':
+    print('Running HalalStocksFilter')
+    main()
